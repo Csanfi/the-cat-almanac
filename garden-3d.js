@@ -15,7 +15,7 @@ function createGarden(canvas) {
   }
   const materials = new Map();
   function mesh(parent, geometry, color, x, y, z) {
-    if (!materials.has(color)) materials.set(color, new THREE.MeshStandardMaterial({color, flatShading:true}));
+    if (!materials.has(color)) materials.set(color, new THREE.MeshStandardMaterial({color, roughness:.83}));
     const item = new THREE.Mesh(geometry, materials.get(color));
     item.position.set(x,y,z);
     parent.add(item);
@@ -27,11 +27,41 @@ function createGarden(canvas) {
     item.scale.set(w,h,d);
     return item;
   }
+  const sphere=new THREE.SphereGeometry(1,24,18);
+  function oval(parent,x,y,z,rx,ry,rz,color){
+    const item=mesh(parent,sphere,color,x,y,z);
+    item.scale.set(rx,ry,rz);
+    return item;
+  }
+  function stroke(parent,points,r,color){
+    const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));
+    return mesh(parent,new THREE.TubeGeometry(curve,12,r,7,false),color,0,0,0);
+  }
+  // Tileable directional grain for fur, wood, straw, and the trail.
+  function grain(item,kind,repeatX=1,repeatY=1){
+    const tile=document.createElement('canvas');tile.width=tile.height=128;
+    const g=tile.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,128,128);
+    let seed=937;
+    function random(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
+    for(let i=0;i<1900;i++){
+      const x=random()*128,y=random()*128;
+      g.strokeStyle='rgba(66,42,30,'+(.05+random()*.26)+')';
+      const dx=kind==='fur'?9:kind==='straw'?18:2;
+      const dy=kind==='bark'?18:kind==='fur'?4:2;
+      g.beginPath();g.moveTo(x,y);g.lineTo(x+dx*random(),y+dy*random());g.stroke();
+    }
+    const texture=new THREE.CanvasTexture(tile);texture.colorSpace=THREE.SRGBColorSpace;
+    texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(repeatX,repeatY);
+    item.material=item.material.clone();item.material.map=texture;item.material.bumpMap=texture;
+    item.material.bumpScale=kind==='bark'?.8:.25;
+    return item.material;
+  }
   const ground=box(scene,400,-6,-150,6000,10,1600,0x91b96c);
   const road=box(scene,400,-1,0,6000,2,74,0xc9985e);
+  grain(ground,'earth',160,36);grain(road,'earth',180,3);
   const scenery=group(scene);
   const landscapes=Array.from({length:4},()=>group(scenery));
-  const leaf=new THREE.IcosahedronGeometry(1,0);
+  const leaf=new THREE.IcosahedronGeometry(1,1);
   const peak=new THREE.ConeGeometry(1,1,6);
   for(let i=-2;i<25;i++){
     const x=i*96;
@@ -40,9 +70,14 @@ function createGarden(canvas) {
       const stalk=box(landscapes[0],x+j*6,9,-51,2,18,2,0xc99848);
       stalk.rotation.z=(j-1)*.2;
     }
-    box(landscapes[1],x,24,-110,10,48,10,0x785034);
+    mesh(landscapes[1],new THREE.CylinderGeometry(4,7,49,9),0x785034,x,24,-110);
     mesh(landscapes[1],peak,0x315c45,x,61,-110).scale.set(36,88,36);
     mesh(landscapes[1],peak,0x47815b,x+42,38,-190).scale.set(49,76,49);
+    for(let k=0;k<4;k++){
+      const angle=k*1.65+i;
+      oval(landscapes[1],x+Math.cos(angle)*18,48+k*6,-110+Math.sin(angle)*15,22,19,22,k%2?0x47794b:0x386843);
+      oval(landscapes[0],x+k*6,16+k%2*2,-51,1.8,4.2,1.6,0xdcb65f).rotation.z=-.3;
+    }
     const summit=72+18*Math.cos(i);
     mesh(landscapes[2],peak,0x85acbd,x,summit/2,-220).scale.set(85,summit,70);
     mesh(landscapes[2],peak,0xe4f6fc,x,summit*.83,-220).scale.set(30,summit*.35,25);
@@ -50,45 +85,73 @@ function createGarden(canvas) {
     box(landscapes[3],x,1,-67,75,2,7,0xff793a).rotation.y=.25;
   }
   const cat=group(scene), fur=0xdc803e, cream=0xffdfaa;
-  box(cat,0,16,0,29,16,15,fur);
-  box(cat,14,27,0,18,18,19,fur);
-  for(const z of [-6,6]){
-    const ear=mesh(cat,new THREE.ConeGeometry(5,10,4),fur,12,39,z);
-    ear.rotation.y=Math.PI/4;
-    box(cat,22,30,z*1.45,3,4,2,0x293d32);
-    box(cat,23,24,z*.58,5,5,7,cream);
-    for(const x of [-6,3]) box(cat,x,19,z*1.25,3,8,1,0x99582d);
+  const coat=grain(oval(cat,0,16,0,17,10,9,fur),'fur',3,2);
+  const head=group(cat);head.position.set(12,28,0);head.rotation.y=-.55;
+  oval(head,0,0,0,12,12,11,fur).material=coat;
+  oval(cat,8,17,4,9,9,6,cream);
+  for(const side of [-1,1]){
+    const z=side*7;
+    const ear=mesh(head,new THREE.ConeGeometry(1,1,24),fur,-3,11,z);
+    ear.scale.set(5,13,4);ear.rotation.x=side*.23;
+    const inner=mesh(head,new THREE.ConeGeometry(1,1,20),0xd29182,-1,11,z);
+    inner.scale.set(3.6,9,3);inner.rotation.x=side*.23;
+    oval(head,7,2,z,4.8,5.6,3.8,0xffefcd);
+    oval(head,9,2,z*1.24,3,4,1.9,0x668350);
+    oval(head,10,2,z*1.38,1.6,3,1,0x282423);
+    oval(head,10.7,3.6,z*1.47,.8,.9,.6,0xfffaf0);
+    oval(head,10,-3,z*.54,5.4,3.5,4,cream);
+    for(let i=0;i<3;i++){
+      stroke(head,[[11,-3-i*.4,z*.64],[13,-3-i*.8,z*1.12],[15-i,-2-i*1.4,z*1.8]],.16,0xe8ccb0);
+      oval(cat,-8+i*6,20,z*.99,1.6,4.3,1.2,0xa96332).rotation.z=-.35;
+    }
   }
-  box(cat,26,26,0,3,3,4,0xaf7466);
-  const tail=box(cat,-19,22,0,7,20,7,fur);
-  tail.rotation.z=.45;
+  oval(head,14,-1.5,0,2.2,1.7,2.7,0xa66d64);
+  stroke(cat,[[-12,18,0],[-20,20,0],[-24,28,1],[-27,34,3],[-31,33,4]],3.2,fur);
+  oval(cat,-31,33,4,3.2,3.2,3.2,cream);
   const legs=[];
-  for(const x of [-9,9]) for(const z of [-5,5]){
+  for(const x of [-9,9])for(const z of [-5,5]){
     const leg=group(cat);leg.position.set(x,12,z);
-    box(leg,0,-5,0,6,10,5,fur);box(leg,1,-10,0,8,4,6,cream);legs.push(leg);
+    oval(leg,0,-3,0,4,7,3.5,fur);oval(leg,1,-9,0,3,4,2.8,cream);
+    oval(leg,3,-10,0,4.8,2.7,3.6,cream);legs.push(leg);
   }
   const obstacle=group(scene);
   const [hay,stump,ice,lava]=Array.from({length:4},()=>group(obstacle));
   const models=[hay,stump,ice,lava];
-  box(hay,0,16,0,28,32,27,0xe0ac4e);
-  for(const x of [-8,8])box(hay,x,16,0,2,33,28,0x98743b);
-  mesh(stump,new THREE.CylinderGeometry(11,15,32,9),0x804f35,0,16,0);
-  mesh(stump,new THREE.CylinderGeometry(10,10,1,9),0xc49865,0,32,0);
-  mesh(ice,peak,0x74cee8,-3,16,0).scale.set(11,32,13);
-  mesh(ice,peak,0xacdfed,7,10,2).scale.set(8,20,9);
-  mesh(lava,leaf,0x684143,0,15,0).scale.set(16,18,15);
-  box(lava,0,17,12,3,15,2,0xff8539).rotation.z=.35;
+  const bale=mesh(hay,new THREE.CylinderGeometry(15,15,26,40),0xe0ac4e,0,15,0);
+  bale.rotation.z=Math.PI/2;grain(bale,'straw',4,2);
+  for(const x of [-8,8])mesh(hay,new THREE.TorusGeometry(15.2,.85,8,44),0x966d38,x,15,0).rotation.y=Math.PI/2;
+  for(let r=3;r<15;r+=2.4)mesh(hay,new THREE.TorusGeometry(r,.35,6,36),0xc39348,13.2,15,0).rotation.y=Math.PI/2;
+  grain(mesh(stump,new THREE.CylinderGeometry(11,15,31,28),0x825333,0,15.5,0),'bark',3,1);
+  mesh(stump,new THREE.CylinderGeometry(10.8,11,.8,32),0xd5a16a,0,31.3,0);
+  for(let r=2;r<10;r+=2)mesh(stump,new THREE.TorusGeometry(r,.25,5,32),0xa37951,0,31.8,0).rotation.x=Math.PI/2;
+  for(let i=0;i<7;i++){const a=i*.898;oval(stump,11*Math.cos(a),4,11*Math.sin(a),5,6,4,0x795036)}
+  for(let i=0;i<6;i++){
+    const a=i*2.4,h=i===0?32:14+i*2;
+    const gem=mesh(ice,new THREE.CylinderGeometry(1,5,h,5),i%2?0xa5e7fa:0x53b6da,Math.sin(a)*8,h/2,Math.cos(a)*6);
+    gem.rotation.z=Math.sin(a)*.23;gem.material.roughness=.17;
+  }
+  mesh(lava,leaf,0xae492b,0,14,0).scale.set(15,17,14);
+  for(let i=0;i<18;i++){
+    const y=1-2*(i+.5)/18,a=i*2.4,r=Math.sqrt(1-y*y);
+    mesh(lava,leaf,i%2?0x463739:0x593e3c,11*r*Math.cos(a),15+y*12,10*r*Math.sin(a)).scale.set(7,6,7);
+  }
+  stroke(lava,[[-9,21,9],[-4,18,14],[-5,13,15],[1,9,14],[4,5,12]],.8,0xff9b42);
   let activeLevel=-1;
-  const shadowGeometry=new THREE.CircleGeometry(1,20);
+  const shadowGeometry=new THREE.PlaneGeometry(2,2);
+  const contact=document.createElement('canvas');contact.width=contact.height=64;
+  const pen=contact.getContext('2d'),fade=pen.createRadialGradient(32,32,1,32,32,32);
+  fade.addColorStop(0,'rgba(47,29,20,.55)');fade.addColorStop(1,'rgba(47,29,20,0)');
+  pen.fillStyle=fade;pen.fillRect(0,0,64,64);
+  const shadowMat=new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(contact),transparent:true,depthWrite:false});
   function shadow(){
     const s=mesh(scene,shadowGeometry,0xa17d53,0,.2,0);
-    s.rotation.x=-Math.PI/2;return s;
+    s.material=shadowMat;s.rotation.x=-Math.PI/2;return s;
   }
   const catShadow=shadow(), barrelShadow=shadow();
   barrelShadow.scale.set(17,14,1);
   const blast=group(scene);
-  box(blast,0,0,0,1,7,7,0x48d9ef);
-  box(blast,0,0,3.4,1,3,2,0xf3ffff);
+  oval(blast,0,0,0,.5,4,4,0x48d9ef);
+  oval(blast,0,0,2,.5,1.8,2.6,0xf3ffff);
   return {
     resize(w,h,worldWidth){
       const span=worldWidth*1.08;

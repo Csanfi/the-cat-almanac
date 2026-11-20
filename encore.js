@@ -11,7 +11,9 @@ function createEncore(stage, soundButton){
   soundButton.onclick=()=>music.paused?play():music.pause();
   function rect(x,y,w,h,color){g.fillStyle=color;g.fillRect(x,y,w,h)}
   function oval(x,y,rx,ry,color){
-    g.fillStyle=color;g.beginPath();g.ellipse(x,y,rx,ry,0,0,Math.PI*2);g.fill();
+    const light=g.createRadialGradient(x-rx*.28,y-ry*.35,0,x,y,Math.max(rx,ry)*1.15);
+    light.addColorStop(0,color);light.addColorStop(.72,color);light.addColorStop(1,'#322036');
+    g.fillStyle=light;g.beginPath();g.ellipse(x,y,rx,ry,0,0,Math.PI*2);g.fill();
   }
   function shape(points,color){
     g.fillStyle=color;g.beginPath();points.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();g.fill();
@@ -31,7 +33,7 @@ function createEncore(stage, soundButton){
     }
     for(const side of [-1,1]){
       const x=W/2+side*Math.min(W*.35,170);
-      rect(x-19,98,38,72,'#191726');
+      rect(x-20,97,40,74,'#67516e');rect(x-18,99,36,70,'#191726');
       for(const y of [117,149]){oval(x,y,14,14,'#504359');oval(x,y,7,7,'#211d31')}
     }
     g.save();g.translate(W/2,156+3*Math.sin(beat));
@@ -41,8 +43,16 @@ function createEncore(stage, soundButton){
     oval(0,-65,29,23,fur);rect(-24,-67,48,7,'#292036');
     for(const x of [-13,12])oval(x,-64,10,7,'#30203f');
     oval(0,-53,4,3,'#9b554d');
+    for(const side of [-1,1]){
+      shape([[side*23,-88],[side*20,-76],[side*10,-78]],'#dd9990');
+      oval(side*7,-51,8,5,'#ffd6a0');
+      for(let j=0;j<3;j++)shape([[side*12,-53+j*2],[side*33,-56+j*4],[side*13,-52+j*2]],'#e9b98b');
+    }
     g.rotate(-.42);oval(-5,-10,19,15,'#ec3675');oval(7,-10,13,11,'#ec3675');
     rect(6,-14,44,6,'#f8bf78');rect(48,-16,12,9,'#f7dfab');
+    for(let j=0;j<10;j++)rect(10+j*3.7,-14,.55,6,'#805344');
+    for(let j=0;j<3;j++)oval(50+j*3,-18,1.5,2.4,'#c2bac9');
+    rect(-9,-15,2,9,'#30243a');rect(-2,-15,2,9,'#30243a');
     for(let j=0;j<3;j++)rect(-7,-12+j*2,58,.7,'#ffedce');
     oval(26,-13,6,5,fur);oval(-7,-14+5*Math.sin(beat*2),7,5,'#ffd59b');g.restore();
     for(let row=0;row<5;row++){
