@@ -15,8 +15,13 @@ const button=document.querySelector('button'), message=document.querySelector('#
 let mode='ready', width, height, x, lift=0, velocity=0, cleared=0, distance=0, last=0;
 const beam=document.querySelector('#beam');
 let beamTime=0, cooldown=0, beamY=0;
+const shout = new Audio('kamehameha.mp3');
+shout.preload = 'auto';
 function fire(){
   if(mode!=='run'||cooldown>0)return;
+  shout.currentTime = 0;
+  shout.play().catch(() => {});
+  message.textContent = 'Kamehameha!';
   beamY=149-lift;
   beamTime=.3; cooldown=2;
   beam.disabled=true; beam.textContent='Charging…';
@@ -71,7 +76,7 @@ function frame(now){
   const dt=last?Math.min(.025,(now-last)/1000):0;last=now;
   beamTime=Math.max(0,beamTime-dt);
   cooldown=Math.max(0,cooldown-dt);
-  if(cooldown===0 && beam.disabled){beam.disabled=false;beam.textContent='Kamehameha'}
+  if(cooldown===0 && beam.disabled){beam.disabled=false;beam.textContent='Kamehameha';message.textContent='Space jumps. K fires a beam.'}
   const speed=Math.min(395,235+cleared*9);
   velocity-=1120*dt; lift=Math.max(0,lift+velocity*dt);if(lift===0&&velocity<0)velocity=0;
   x-=speed*dt;distance+=speed*dt;
