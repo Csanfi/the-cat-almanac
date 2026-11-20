@@ -84,36 +84,28 @@ function createGarden(canvas) {
     mesh(landscapes[3],peak,0x623f42,x,38,-210).scale.set(86,76,72);
     box(landscapes[3],x,1,-67,75,2,7,0xff793a).rotation.y=.25;
   }
-  const cat=group(scene), fur=0xdc803e, cream=0xffdfaa;
-  const coat=grain(oval(cat,0,16,0,17,10,9,fur),'fur',3,2);
-  const head=group(cat);head.position.set(12,28,0);head.rotation.y=-.55;
-  oval(head,0,0,0,12,12,11,fur).material=coat;
-  oval(cat,8,17,4,9,9,6,cream);
-  for(const side of [-1,1]){
-    const z=side*7;
-    const ear=mesh(head,new THREE.ConeGeometry(1,1,24),fur,-3,11,z);
-    ear.scale.set(5,13,4);ear.rotation.x=side*.23;
-    const inner=mesh(head,new THREE.ConeGeometry(1,1,20),0xd29182,-1,11,z);
-    inner.scale.set(3.6,9,3);inner.rotation.x=side*.23;
-    oval(head,7,2,z,4.8,5.6,3.8,0xffefcd);
-    oval(head,9,2,z*1.24,3,4,1.9,0x668350);
-    oval(head,10,2,z*1.38,1.6,3,1,0x282423);
-    oval(head,10.7,3.6,z*1.47,.8,.9,.6,0xfffaf0);
-    oval(head,10,-3,z*.54,5.4,3.5,4,cream);
-    for(let i=0;i<3;i++){
-      stroke(head,[[11,-3-i*.4,z*.64],[13,-3-i*.8,z*1.12],[15-i,-2-i*1.4,z*1.8]],.16,0xe8ccb0);
-      oval(cat,-8+i*6,20,z*.99,1.6,4.3,1.2,0xa96332).rotation.z=-.35;
-    }
+  const robot=group(scene);
+  const preview=new THREE.Sprite(new THREE.SpriteMaterial({
+    map:new THREE.TextureLoader().load('robot.png',()=>renderer.render(scene,camera)),transparent:true
+  }));
+  preview.scale.set(59,59,1);preview.position.y=27;robot.add(preview);
+  async function loadRobot(){
+    const response=await fetch('robot.bin');
+    if(!response.ok)throw new Error('Robot mesh unavailable');
+    const data=await response.arrayBuffer();
+    const [count,...groups]=new Uint32Array(data,0,4);
+    const positions=Float32Array.from(new Int16Array(data,16,count*3),v=>v/100);
+    const geometry=new THREE.BufferGeometry();
+    geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));
+    geometry.setIndex(new THREE.BufferAttribute(new Uint16Array(data,16+count*6),1));
+    geometry.computeVertexNormals();
+    let offset=0;
+    groups.forEach((size,index)=>{geometry.addGroup(offset,size,index);offset+=size});
+    const finishes=[0xc99540,0x737976,0x434644].map(color=>new THREE.MeshStandardMaterial({color,roughness:.68,metalness:.16}));
+    robot.add(new THREE.Mesh(geometry,finishes));preview.visible=false;
+    renderer.render(scene,camera);
   }
-  oval(head,14,-1.5,0,2.2,1.7,2.7,0xa66d64);
-  stroke(cat,[[-12,18,0],[-20,20,0],[-24,28,1],[-27,34,3],[-31,33,4]],3.2,fur);
-  oval(cat,-31,33,4,3.2,3.2,3.2,cream);
-  const legs=[];
-  for(const x of [-9,9])for(const z of [-5,5]){
-    const leg=group(cat);leg.position.set(x,12,z);
-    oval(leg,0,-3,0,4,7,3.5,fur);oval(leg,1,-9,0,3,4,2.8,cream);
-    oval(leg,3,-10,0,4.8,2.7,3.6,cream);legs.push(leg);
-  }
+  loadRobot().catch(()=>{preview.visible=true});
   const obstacle=group(scene);
   const [hay,stump,ice,lava]=Array.from({length:4},()=>group(obstacle));
   const models=[hay,stump,ice,lava];
@@ -173,8 +165,8 @@ function createGarden(canvas) {
         ground.material.color.set(stage.land);
         road.material.color.set(['#c89e66','#a48461','#c6ddee','#79615c'][level]);
       }
-      cat.position.set(60,lift,0);
-      legs.forEach((leg,i)=>leg.rotation.z=lift?.35:(mode==='run'?Math.sin(distance*.12+i*Math.PI/2)*.48:0));
+      robot.position.set(60,lift,0);
+      robot.rotation.z=lift?.06:(mode==='run'?Math.sin(distance*.16)*.014:0);
       catShadow.position.x=60;catShadow.scale.set(19-lift*.08,9-lift*.04,1);
       obstacle.position.x=x+14;barrelShadow.position.x=x+14;
       scenery.position.x=-(distance%192);

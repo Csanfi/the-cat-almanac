@@ -8,11 +8,11 @@ footer{flex-wrap:wrap}footer span{flex:1 1 10rem}.controls{display:flex;gap:.4re
 </style>
 <header><strong id="level">Level 1 · Prairie</strong><span id="score">Hay bale · 0/1</span></header>
 <canvas tabindex="0" aria-label="Garden course. Press Space or tap to jump."></canvas>
-<canvas id="concert" hidden aria-label="Victory concert. The tabby plays electric guitar under moving spotlights as the crowd cheers."></canvas>
+<canvas id="concert" hidden aria-label="Victory concert. WALL-E plays electric guitar under moving spotlights as the crowd cheers."></canvas>
 <footer><span id="message" role="status">Press Space to jump. K fires a beam.</span><div class="controls"><button>Play</button><button id="beam" disabled>Kamehameha</button><button id="music" hidden>Play music</button></div></footer>
 <script src="vendor/three.min.js"></script>
-<script src="encore.js?v=sculpt"></script>
-<script src="garden-3d.js?v=sculpt"></script>
+<script src="encore.js?v=robot"></script>
+<script src="garden-3d.js?v=robot"></script>
 <script>
 let canvas=document.querySelector('canvas'), garden, ctx;
 try {
@@ -22,6 +22,7 @@ try {
   canvas.replaceWith(fallback);canvas=fallback;
   ctx=canvas.getContext('2d');
 }
+const robotSprite=new Image();robotSprite.onload=()=>{if(width)draw()};robotSprite.src="robot.png";
 const button=document.querySelector('button'), message=document.querySelector('#message'), score=document.querySelector('#score');
 let mode='ready', width, height, x, lift=0, velocity=0, cleared=0, distance=0, last=0;
 const stages=[
@@ -86,12 +87,7 @@ function draw(){
   }
   for(let i=-(distance*.4)%34;i<width;i+=34)box(i,130,8,34,'#c1cd98');
   box(0,142,width,5,'#c1cd98');box(0,164,width,6,'#67834d');box(0,170,width,30,stages[level].land);
-  ctx.save();ctx.translate(44,164-lift);
-  const fur='#d97639', stripe='#86452b', step=mode==='run'&&!lift?Math.sin(distance*.14)*3:0;
-  box(-9,-26,7,15,fur);box(-13,-32,6,9,fur);box(-15,-34,7,5,stripe);
-  box(-4,-21,32,15,fur);box(0,-8,6,8+step,fur);box(20,-8,6,8-step,fur);
-  box(17,-32,21,18,fur);box(17,-37,5,7,fur);box(31,-37,5,7,fur);
-  box(32,-27,3,3,'#263731');box(35,-21,6,4,'#f6dbac');box(3,-21,4,7,stripe);box(11,-21,4,6,stripe);ctx.restore();
+  if(robotSprite.naturalWidth)ctx.drawImage(robotSprite,30,110-lift,60,60);
   if(level<2){
     const hay=level===0;
     box(x,132,28,32,hay?'#d6a247':'#815337');
