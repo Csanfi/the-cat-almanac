@@ -6,10 +6,12 @@
 *{box-sizing:border-box}body{margin:0;height:100vh;display:flex;flex-direction:column;background:#f1f3de;color:#173f34;font:1rem/1.4 system-ui}header,footer{display:flex;align-items:center;justify-content:space-between;gap:.65rem;padding:.6rem 1rem}header{background:#173f34;color:#fff}button{font:inherit;font-weight:bold;border:0;border-radius:2em;background:#173f34;color:white;padding:.55em 1.2em;cursor:pointer}canvas{width:100%;flex:1;min-height:0;touch-action:manipulation;cursor:pointer}button:focus-visible,canvas:focus-visible{outline:3px solid #e18629;outline-offset:-3px}
 footer{flex-wrap:wrap}footer span{flex:1 1 10rem}.controls{display:flex;gap:.4rem}#beam{background:#145c77}#beam:disabled{opacity:.6}
 </style>
-<header><strong id="level">Level 1 · Prairie</strong><span id="score">Hay bales · 0/5</span></header>
+<header><strong id="level">Level 1 · Prairie</strong><span id="score">Hay bales · 0/3</span></header>
 <canvas tabindex="0" aria-label="Garden course. Press Space or tap to jump."></canvas>
-<footer><span id="message" role="status">Press Space to jump. K fires a beam.</span><div class="controls"><button>Play</button><button id="beam" disabled>Kamehameha</button></div></footer>
+<canvas id="concert" hidden aria-label="Victory concert. The tabby plays electric guitar under moving spotlights as the crowd cheers."></canvas>
+<footer><span id="message" role="status">Press Space to jump. K fires a beam.</span><div class="controls"><button>Play</button><button id="beam" disabled>Kamehameha</button><button id="music" hidden>Play music</button></div></footer>
 <script src="vendor/three.min.js"></script>
+<script src="encore.js"></script>
 <script src="garden-3d.js?v=clear-light"></script>
 <script>
 let canvas=document.querySelector('canvas'), garden, ctx;
@@ -23,16 +25,18 @@ try {
 const button=document.querySelector('button'), message=document.querySelector('#message'), score=document.querySelector('#score');
 let mode='ready', width, height, x, lift=0, velocity=0, cleared=0, distance=0, last=0;
 const stages=[
-  {name:'Prairie',items:'Hay bales',speed:235,sky:'#448fc4',land:'#bfa054'},
-  {name:'Forest',items:'Stumps',speed:255,sky:'#548e83',land:'#567547'},
-  {name:'Cold',items:'Ice spikes',speed:275,sky:'#5086b5',land:'#afcddc'},
-  {name:'Fire',items:'Lava rocks',speed:295,sky:'#ad5043',land:'#594345'}
+  {name:'Prairie',items:'Hay bales',speed:310,sky:'#448fc4',land:'#bfa054'},
+  {name:'Forest',items:'Stumps',speed:335,sky:'#548e83',land:'#567547'},
+  {name:'Cold',items:'Ice spikes',speed:360,sky:'#5086b5',land:'#afcddc'},
+  {name:'Fire',items:'Lava rocks',speed:390,sky:'#ad5043',land:'#594345'}
 ];
+const perLevel=3;
+const encore=createEncore(document.querySelector('#concert'),document.querySelector('#music'));
 let level=0, frameId;
 function updateHUD(){
   const stage=stages[level];
   document.querySelector('#level').textContent='Level '+(level+1)+' · '+stage.name;
-  score.textContent=stage.items+' · '+(cleared-level*5)+'/5';
+  score.textContent=stage.items+' · '+(cleared-level*perLevel)+'/'+perLevel;
 }
 const beam=document.querySelector('#beam');
 let beamTime=0, cooldown=0, beamY=0;
@@ -51,14 +55,16 @@ function fire(){
 }
 function clearObstacle(){
   cleared++;
-  level=Math.min(3,Math.floor(cleared/5));
+  level=Math.min(3,Math.floor(cleared/perLevel));
   updateHUD();
-  if(cleared===20){
+  if(cleared===perLevel*stages.length){
     cancelAnimationFrame(frameId);mode='won';beam.disabled=true;button.textContent='Replay';
-    message.textContent='All four terrains cleared! Press Space to play again.';
+    document.querySelector('#level').textContent='Victory concert';
+    score.textContent='12/12 cleared';
+    message.textContent='All four terrains cleared!';canvas.hidden=true;beam.hidden=true;encore.start();
     x=width+100;return;
   }
-  if(cleared%5===0)message.textContent='Entering '+stages[level].name+'!';
+  if(cleared%perLevel===0)message.textContent='Entering '+stages[level].name+'!';
   x=Math.max(width,300)+Math.random()*90;
 }
 function resize(){
@@ -106,6 +112,7 @@ function draw(){
 }
 function jump(){
   if(mode!=='run'){
+    encore.stop();canvas.hidden=false;beam.hidden=false;encore.unlock();
     mode='run';cleared=0;lift=0;x=Math.max(190,width*.78);last=0;
     cooldown=0;beamTime=0;beam.disabled=false;beam.textContent='Kamehameha';
     level=0;updateHUD();message.textContent='Space jumps. K fires a beam.';button.textContent='Jump';frameId=requestAnimationFrame(frame);
@@ -130,7 +137,7 @@ function frame(now){
 }
 window.addEventListener('keydown',event=>{
   if(event.code==='KeyK'&&!event.repeat)fire();
-  if(event.code==='Space' && event.target!==beam){event.preventDefault();if(!event.repeat)jump()}
+  if(event.code==='Space' && event.target!==beam && event.target.id!=='music'){event.preventDefault();if(!event.repeat)jump()}
 });
 canvas.addEventListener('pointerdown',()=>{canvas.focus();jump()});button.addEventListener('click',jump);
 beam.addEventListener('click',fire);
