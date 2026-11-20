@@ -4,14 +4,29 @@
 <title>Barrel Hop</title>
 <style>
 *{box-sizing:border-box}body{margin:0;height:100vh;display:flex;flex-direction:column;background:#f1f3de;color:#173f34;font:1rem/1.4 system-ui}header,footer{display:flex;align-items:center;justify-content:space-between;gap:.65rem;padding:.6rem 1rem}header{background:#173f34;color:#fff}button{font:inherit;font-weight:bold;border:0;border-radius:2em;background:#173f34;color:white;padding:.55em 1.2em;cursor:pointer}canvas{width:100%;flex:1;min-height:0;touch-action:manipulation;cursor:pointer}button:focus-visible,canvas:focus-visible{outline:3px solid #e18629;outline-offset:-3px}
+footer{flex-wrap:wrap}footer span{flex:1 1 10rem}.controls{display:flex;gap:.4rem}#beam{background:#145c77}#beam:disabled{opacity:.6}
 </style>
 <header><strong>Garden dash</strong><span id="score">Barrels cleared · 0</span></header>
 <canvas tabindex="0" aria-label="Garden course. Press Space or tap to jump."></canvas>
-<footer><span id="message" role="status">Press Space or tap to jump.</span><button>Play</button></footer>
+<footer><span id="message" role="status">Press Space to jump. K fires a beam.</span><div class="controls"><button>Play</button><button id="beam" disabled>Kamehameha</button></div></footer>
 <script>
 const canvas=document.querySelector('canvas'), ctx=canvas.getContext('2d');
 const button=document.querySelector('button'), message=document.querySelector('#message'), score=document.querySelector('#score');
 let mode='ready', width, height, x, lift=0, velocity=0, cleared=0, distance=0, last=0;
+const beam=document.querySelector('#beam');
+let beamTime=0, cooldown=0, beamY=0;
+function fire(){
+  if(mode!=='run'||cooldown>0)return;
+  beamY=149-lift;
+  beamTime=.3; cooldown=2;
+  beam.disabled=true; beam.textContent='Charging…';
+  if(x+28>=80 && x<=width && beamY+6>=132)clearBarrel();
+  draw();
+}
+function clearBarrel(){
+  cleared++;score.textContent='Barrels cleared · '+cleared;
+  x=Math.max(width,300)+Math.random()*90;
+}
 function resize(){
   const rect=canvas.getBoundingClientRect(), ratio=devicePixelRatio||1;
   canvas.width=Math.round(rect.width*ratio); canvas.height=Math.round(rect.height*ratio);
@@ -37,29 +52,41 @@ function draw(){
   box(x+2,132,24,32,'#88542e');box(x,137,28,22,'#b97e44');
   box(x+7,134,2,28,'#d79f5e');box(x+18,134,2,28,'#926035');
   box(x,137,28,4,'#4e5749');box(x,155,28,4,'#4e5749');
+  if(beamTime>0){
+    ctx.save();ctx.globalAlpha=Math.min(1,beamTime*8);
+    box(80,beamY-6,width-80,12,'#30bde0');
+    box(80,beamY-2,width-80,4,'#edffff');
+    ctx.fillStyle='#aff7ff';ctx.beginPath();ctx.arc(80,beamY,8,0,2*Math.PI);ctx.fill();ctx.restore();
+  }
 }
 function jump(){
   if(mode!=='run'){
     mode='run';cleared=0;lift=0;x=Math.max(190,width*.78);last=0;
-    score.textContent='Barrels cleared · 0';message.textContent='Space or tap to jump.';button.textContent='Jump';requestAnimationFrame(frame);
+    cooldown=0;beamTime=0;beam.disabled=false;beam.textContent='Kamehameha';
+    score.textContent='Barrels cleared · 0';message.textContent='Space jumps. K fires a beam.';button.textContent='Jump';requestAnimationFrame(frame);
   }
   if(lift===0)velocity=440;
 }
 function frame(now){
   const dt=last?Math.min(.025,(now-last)/1000):0;last=now;
+  beamTime=Math.max(0,beamTime-dt);
+  cooldown=Math.max(0,cooldown-dt);
+  if(cooldown===0 && beam.disabled){beam.disabled=false;beam.textContent='Kamehameha'}
   const speed=Math.min(395,235+cleared*9);
   velocity-=1120*dt; lift=Math.max(0,lift+velocity*dt);if(lift===0&&velocity<0)velocity=0;
   x-=speed*dt;distance+=speed*dt;
   if(x<78&&x+26>44&&lift<29){
-    mode='over';button.textContent='Replay';message.textContent='Barrel bumped! Press Space to retry.';
+    mode='over';beam.disabled=true;beam.textContent='Kamehameha';button.textContent='Replay';message.textContent='Barrel bumped! Press Space to retry.';
   }else if(x+28<44){
-    cleared++;score.textContent='Barrels cleared · '+cleared;x=Math.max(width,300)+Math.random()*90;
+    clearBarrel();
   }
   draw();if(mode==='run')requestAnimationFrame(frame);
 }
 window.addEventListener('keydown',event=>{
-  if(event.code==='Space'){event.preventDefault();if(!event.repeat)jump()}
+  if(event.code==='KeyK'&&!event.repeat)fire();
+  if(event.code==='Space' && event.target!==beam){event.preventDefault();if(!event.repeat)jump()}
 });
 canvas.addEventListener('pointerdown',()=>{canvas.focus();jump()});button.addEventListener('click',jump);
+beam.addEventListener('click',fire);
 new ResizeObserver(resize).observe(canvas);
 </script></html>
