@@ -9,8 +9,17 @@ footer{flex-wrap:wrap}footer span{flex:1 1 10rem}.controls{display:flex;gap:.4re
 <header><strong>Garden dash</strong><span id="score">Barrels cleared · 0</span></header>
 <canvas tabindex="0" aria-label="Garden course. Press Space or tap to jump."></canvas>
 <footer><span id="message" role="status">Press Space to jump. K fires a beam.</span><div class="controls"><button>Play</button><button id="beam" disabled>Kamehameha</button></div></footer>
+<script src="vendor/three.min.js"></script>
+<script src="garden-3d.js"></script>
 <script>
-const canvas=document.querySelector('canvas'), ctx=canvas.getContext('2d');
+let canvas=document.querySelector('canvas'), garden, ctx;
+try {
+  garden=createGarden(canvas);
+} catch {
+  const fallback=canvas.cloneNode(false);
+  canvas.replaceWith(fallback);canvas=fallback;
+  ctx=canvas.getContext('2d');
+}
 const button=document.querySelector('button'), message=document.querySelector('#message'), score=document.querySelector('#score');
 let mode='ready', width, height, x, lift=0, velocity=0, cleared=0, distance=0, last=0;
 const beam=document.querySelector('#beam');
@@ -34,13 +43,16 @@ function clearBarrel(){
 }
 function resize(){
   const rect=canvas.getBoundingClientRect(), ratio=devicePixelRatio||1;
-  canvas.width=Math.round(rect.width*ratio); canvas.height=Math.round(rect.height*ratio);
+  if(!rect.width || !rect.height)return;
   height=200; const previous=width; width=height*rect.width/rect.height;
   if(previous) x*=width/previous; else x=width*.78;
+  if(garden){garden.resize(rect.width,rect.height,width);draw();return}
+  canvas.width=Math.round(rect.width*ratio); canvas.height=Math.round(rect.height*ratio);
   ctx.setTransform(canvas.width/width,0,0,canvas.height/height,0,0); draw();
 }
 function box(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(x,y,w,h)}
 function draw(){
+  if(garden){garden.draw({x,lift,distance,mode,width,beamTime,beamY});return}
   box(0,0,width,200,'#d9ebdb');
   ctx.fillStyle='#fff1aa';ctx.beginPath();ctx.arc(width*.8,37,20,0,7);ctx.fill();
   for(let i=-80-(distance*.14)%80;i<width+80;i+=80){
