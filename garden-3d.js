@@ -3,7 +3,6 @@ function createGarden(canvas) {
   const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xcce8e6);
-  scene.fog = new THREE.FogExp2(0xcce8e6, .0015);
   const camera = new THREE.OrthographicCamera();
   const sky = new THREE.HemisphereLight(0xfff6d8, 0x80967b, 2.1);
   const sun = new THREE.DirectionalLight(0xffe7bc, 2.5);
