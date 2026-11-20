@@ -6,7 +6,7 @@
 *{box-sizing:border-box}body{margin:0;height:100vh;display:flex;flex-direction:column;background:#f1f3de;color:#173f34;font:1rem/1.4 system-ui}header,footer{display:flex;align-items:center;justify-content:space-between;gap:.65rem;padding:.6rem 1rem}header{background:#173f34;color:#fff}button{font:inherit;font-weight:bold;border:0;border-radius:2em;background:#173f34;color:white;padding:.55em 1.2em;cursor:pointer}canvas{width:100%;flex:1;min-height:0;touch-action:manipulation;cursor:pointer}button:focus-visible,canvas:focus-visible{outline:3px solid #e18629;outline-offset:-3px}
 footer{flex-wrap:wrap}footer span{flex:1 1 10rem}.controls{display:flex;gap:.4rem}#beam{background:#145c77}#beam:disabled{opacity:.6}
 </style>
-<header><strong>Garden dash</strong><span id="score">Barrels cleared · 0</span></header>
+<header><strong id="level">Level 1 · Prairie</strong><span id="score">Hay bales · 0/5</span></header>
 <canvas tabindex="0" aria-label="Garden course. Press Space or tap to jump."></canvas>
 <footer><span id="message" role="status">Press Space to jump. K fires a beam.</span><div class="controls"><button>Play</button><button id="beam" disabled>Kamehameha</button></div></footer>
 <script src="vendor/three.min.js"></script>
@@ -22,6 +22,18 @@ try {
 }
 const button=document.querySelector('button'), message=document.querySelector('#message'), score=document.querySelector('#score');
 let mode='ready', width, height, x, lift=0, velocity=0, cleared=0, distance=0, last=0;
+const stages=[
+  {name:'Prairie',items:'Hay bales',speed:235,sky:'#f7e3ae',land:'#bfa054'},
+  {name:'Forest',items:'Stumps',speed:255,sky:'#bdd7c4',land:'#567547'},
+  {name:'Cold',items:'Ice spikes',speed:275,sky:'#c6e8fa',land:'#dfedf6'},
+  {name:'Fire',items:'Lava rocks',speed:295,sky:'#eda383',land:'#594345'}
+];
+let level=0, frameId;
+function updateHUD(){
+  const stage=stages[level];
+  document.querySelector('#level').textContent='Level '+(level+1)+' · '+stage.name;
+  score.textContent=stage.items+' · '+(cleared-level*5)+'/5';
+}
 const beam=document.querySelector('#beam');
 let beamTime=0, cooldown=0, beamY=0;
 const shout = new Audio('kamehameha.mp3');
@@ -34,11 +46,19 @@ function fire(){
   beamY=149-lift;
   beamTime=.3; cooldown=2;
   beam.disabled=true; beam.textContent='Charging…';
-  if(x+28>=80 && x<=width && beamY+6>=132)clearBarrel();
+  if(x+28>=80 && x<=width && beamY+6>=132)clearObstacle();
   draw();
 }
-function clearBarrel(){
-  cleared++;score.textContent='Barrels cleared · '+cleared;
+function clearObstacle(){
+  cleared++;
+  level=Math.min(3,Math.floor(cleared/5));
+  updateHUD();
+  if(cleared===20){
+    cancelAnimationFrame(frameId);mode='won';beam.disabled=true;button.textContent='Replay';
+    message.textContent='All four terrains cleared! Press Space to play again.';
+    x=width+100;return;
+  }
+  if(cleared%5===0)message.textContent='Entering '+stages[level].name+'!';
   x=Math.max(width,300)+Math.random()*90;
 }
 function resize(){
@@ -52,23 +72,31 @@ function resize(){
 }
 function box(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(x,y,w,h)}
 function draw(){
-  if(garden){garden.draw({x,lift,distance,mode,width,beamTime,beamY});return}
-  box(0,0,width,200,'#d9ebdb');
+  if(garden){garden.draw({x,lift,distance,mode,width,beamTime,beamY,level,stage:stages[level]});return}
+  box(0,0,width,200,stages[level].sky);
   ctx.fillStyle='#fff1aa';ctx.beginPath();ctx.arc(width*.8,37,20,0,7);ctx.fill();
   for(let i=-80-(distance*.14)%80;i<width+80;i+=80){
     ctx.fillStyle='#9bbda2';ctx.beginPath();ctx.arc(i,143,54,Math.PI,2*Math.PI);ctx.fill();
   }
   for(let i=-(distance*.4)%34;i<width;i+=34)box(i,130,8,34,'#c1cd98');
-  box(0,142,width,5,'#c1cd98');box(0,164,width,6,'#67834d');box(0,170,width,30,'#d3b17e');
+  box(0,142,width,5,'#c1cd98');box(0,164,width,6,'#67834d');box(0,170,width,30,stages[level].land);
   ctx.save();ctx.translate(44,164-lift);
   const fur='#d97639', stripe='#86452b', step=mode==='run'&&!lift?Math.sin(distance*.14)*3:0;
   box(-9,-26,7,15,fur);box(-13,-32,6,9,fur);box(-15,-34,7,5,stripe);
   box(-4,-21,32,15,fur);box(0,-8,6,8+step,fur);box(20,-8,6,8-step,fur);
   box(17,-32,21,18,fur);box(17,-37,5,7,fur);box(31,-37,5,7,fur);
   box(32,-27,3,3,'#263731');box(35,-21,6,4,'#f6dbac');box(3,-21,4,7,stripe);box(11,-21,4,6,stripe);ctx.restore();
-  box(x+2,132,24,32,'#88542e');box(x,137,28,22,'#b97e44');
-  box(x+7,134,2,28,'#d79f5e');box(x+18,134,2,28,'#926035');
-  box(x,137,28,4,'#4e5749');box(x,155,28,4,'#4e5749');
+  if(level<2){
+    const hay=level===0;
+    box(x,132,28,32,hay?'#d6a247':'#815337');
+    box(x+4,134,3,30,hay?'#946d36':'#563e32');
+    box(x+21,134,3,30,hay?'#946d36':'#563e32');
+    box(x,132,28,4,hay?'#edbe62':'#c59869');
+  }else{
+    ctx.fillStyle=level===2?'#64bedc':'#733b32';
+    ctx.beginPath();ctx.moveTo(x,164);ctx.lineTo(x+10,132);ctx.lineTo(x+19,142);ctx.lineTo(x+28,164);ctx.fill();
+    box(x+12,145,4,14,level===2?'#c7f6ff':'#ff9542');
+  }
   if(beamTime>0){
     ctx.save();ctx.globalAlpha=Math.min(1,beamTime*8);
     box(80,beamY-6,width-80,12,'#30bde0');
@@ -80,24 +108,25 @@ function jump(){
   if(mode!=='run'){
     mode='run';cleared=0;lift=0;x=Math.max(190,width*.78);last=0;
     cooldown=0;beamTime=0;beam.disabled=false;beam.textContent='Kamehameha';
-    score.textContent='Barrels cleared · 0';message.textContent='Space jumps. K fires a beam.';button.textContent='Jump';requestAnimationFrame(frame);
+    level=0;updateHUD();message.textContent='Space jumps. K fires a beam.';button.textContent='Jump';frameId=requestAnimationFrame(frame);
   }
   if(lift===0)velocity=440;
 }
 function frame(now){
+  if(mode!=='run')return;
   const dt=last?Math.min(.025,(now-last)/1000):0;last=now;
   beamTime=Math.max(0,beamTime-dt);
   cooldown=Math.max(0,cooldown-dt);
   if(cooldown===0 && beam.disabled){beam.disabled=false;beam.textContent='Kamehameha';message.textContent='Space jumps. K fires a beam.'}
-  const speed=Math.min(395,235+cleared*9);
+  const speed=stages[level].speed;
   velocity-=1120*dt; lift=Math.max(0,lift+velocity*dt);if(lift===0&&velocity<0)velocity=0;
   x-=speed*dt;distance+=speed*dt;
   if(x<78&&x+26>44&&lift<29){
-    mode='over';beam.disabled=true;beam.textContent='Kamehameha';button.textContent='Replay';message.textContent='Barrel bumped! Press Space to retry.';
+    mode='over';beam.disabled=true;beam.textContent='Kamehameha';button.textContent='Replay';message.textContent='Obstacle hit! Press Space to retry.';
   }else if(x+28<44){
-    clearBarrel();
+    clearObstacle();
   }
-  draw();if(mode==='run')requestAnimationFrame(frame);
+  draw();if(mode==='run')frameId=requestAnimationFrame(frame);
 }
 window.addEventListener('keydown',event=>{
   if(event.code==='KeyK'&&!event.repeat)fire();

@@ -27,21 +27,27 @@ function createGarden(canvas) {
     item.scale.set(w,h,d);
     return item;
   }
-  box(scene,400,-6,-150,6000,10,1600,0x91b96c);
-  box(scene,400,-1,0,6000,2,74,0xc9985e);
-  const scenery = group(scene);
-  const leaf = new THREE.IcosahedronGeometry(1,0);
-  for(let i=-2;i<24;i++){
+  const ground=box(scene,400,-6,-150,6000,10,1600,0x91b96c);
+  const road=box(scene,400,-1,0,6000,2,74,0xc9985e);
+  const scenery=group(scene);
+  const landscapes=Array.from({length:4},()=>group(scenery));
+  const leaf=new THREE.IcosahedronGeometry(1,0);
+  const peak=new THREE.ConeGeometry(1,1,6);
+  for(let i=-2;i<25;i++){
     const x=i*96;
-    box(scenery,x,11,-55,5,22,5,0xc3ad80);
-    box(scenery,x+48,15,-55,96,4,3,0xdaca9b);
-    if(i%2===0){
-      box(scenery,x,26,-115,11,52,11,0x88633f);
-      mesh(scenery,leaf,0x55854f,x,67,-115).scale.set(41,53,35);
-      mesh(scenery,leaf,0x77a85b,x+24,53,-113).scale.set(25,34,26);
+    mesh(landscapes[0],leaf,0xbfa45e,x,0,-250).scale.set(120,55,72);
+    for(let j=0;j<3;j++){
+      const stalk=box(landscapes[0],x+j*6,9,-51,2,18,2,0xc99848);
+      stalk.rotation.z=(j-1)*.2;
     }
-    mesh(scenery,leaf,0x80a783,x+30,0,-340).scale.set(115,90+20*Math.cos(i),80);
-    for(let j=0;j<3;j++) box(scenery,x+j*21,1,21-j*17,4,1,2,0xb68557);
+    box(landscapes[1],x,24,-110,10,48,10,0x785034);
+    mesh(landscapes[1],peak,0x315c45,x,61,-110).scale.set(36,88,36);
+    mesh(landscapes[1],peak,0x47815b,x+42,38,-190).scale.set(49,76,49);
+    const summit=72+18*Math.cos(i);
+    mesh(landscapes[2],peak,0x85acbd,x,summit/2,-220).scale.set(85,summit,70);
+    mesh(landscapes[2],peak,0xe4f6fc,x,summit*.83,-220).scale.set(30,summit*.35,25);
+    mesh(landscapes[3],peak,0x623f42,x,38,-210).scale.set(86,76,72);
+    box(landscapes[3],x,1,-67,75,2,7,0xff793a).rotation.y=.25;
   }
   const cat=group(scene), fur=0xdc803e, cream=0xffdfaa;
   box(cat,0,16,0,29,16,15,fur);
@@ -61,12 +67,18 @@ function createGarden(canvas) {
     const leg=group(cat);leg.position.set(x,12,z);
     box(leg,0,-5,0,6,10,5,fur);box(leg,1,-10,0,8,4,6,cream);legs.push(leg);
   }
-  const barrel=group(scene);
-  const profile=[[0,0],[11,0],[13,4],[15,15],[14,25],[11,32],[0,32]];
-  mesh(barrel,new THREE.LatheGeometry(profile.map(([r,y])=>new THREE.Vector2(r,y)),14),0xad713a,0,0,0);
-  for(const [y,r] of [[6,14.3],[25,14.4]]){
-    mesh(barrel,new THREE.CylinderGeometry(r,r,3,14),0x535e58,0,y,0);
-  }
+  const obstacle=group(scene);
+  const [hay,stump,ice,lava]=Array.from({length:4},()=>group(obstacle));
+  const models=[hay,stump,ice,lava];
+  box(hay,0,16,0,28,32,27,0xe0ac4e);
+  for(const x of [-8,8])box(hay,x,16,0,2,33,28,0x98743b);
+  mesh(stump,new THREE.CylinderGeometry(11,15,32,9),0x804f35,0,16,0);
+  mesh(stump,new THREE.CylinderGeometry(10,10,1,9),0xc49865,0,32,0);
+  mesh(ice,peak,0x74cee8,-3,16,0).scale.set(11,32,13);
+  mesh(ice,peak,0xacdfed,7,10,2).scale.set(8,20,9);
+  mesh(lava,leaf,0x684143,0,15,0).scale.set(16,18,15);
+  box(lava,0,17,12,3,15,2,0xff8539).rotation.z=.35;
+  let activeLevel=-1;
   const shadowGeometry=new THREE.CircleGeometry(1,20);
   function shadow(){
     const s=mesh(scene,shadowGeometry,0xa17d53,0,.2,0);
@@ -89,11 +101,19 @@ function createGarden(canvas) {
       renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
       renderer.setSize(w,h,false);
     },
-    draw({x,lift,distance,mode,width,beamTime,beamY}){
+    draw({x,lift,distance,mode,width,beamTime,beamY,level,stage}){
+      if(activeLevel!==level){
+        activeLevel=level;
+        landscapes.forEach((g,i)=>g.visible=i===level);
+        models.forEach((g,i)=>g.visible=i===level);
+        scene.background.set(stage.sky);
+        ground.material.color.set(stage.land);
+        road.material.color.set(['#c89e66','#a48461','#c6ddee','#79615c'][level]);
+      }
       cat.position.set(60,lift,0);
       legs.forEach((leg,i)=>leg.rotation.z=lift?.35:(mode==='run'?Math.sin(distance*.12+i*Math.PI/2)*.48:0));
       catShadow.position.x=60;catShadow.scale.set(19-lift*.08,9-lift*.04,1);
-      barrel.position.x=x+14;barrelShadow.position.x=x+14;
+      obstacle.position.x=x+14;barrelShadow.position.x=x+14;
       scenery.position.x=-(distance%192);
       blast.visible=beamTime>0;
       if(blast.visible){
