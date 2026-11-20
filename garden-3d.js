@@ -4,8 +4,8 @@ function createGarden(canvas) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xcce8e6);
   const camera = new THREE.OrthographicCamera();
-  const sky = new THREE.HemisphereLight(0xfff6d8, 0x80967b, 2.1);
-  const sun = new THREE.DirectionalLight(0xffe7bc, 2.5);
+  const sky = new THREE.HemisphereLight(0xfff4dd, 0x75826b, 0.95);
+  const sun = new THREE.DirectionalLight(0xffefd0, 2.0);
   sun.position.set(-100, 200, 100);
   scene.add(sky, sun);
   function group(parent) {

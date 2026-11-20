@@ -10,7 +10,7 @@ footer{flex-wrap:wrap}footer span{flex:1 1 10rem}.controls{display:flex;gap:.4re
 <canvas tabindex="0" aria-label="Garden course. Press Space or tap to jump."></canvas>
 <footer><span id="message" role="status">Press Space to jump. K fires a beam.</span><div class="controls"><button>Play</button><button id="beam" disabled>Kamehameha</button></div></footer>
 <script src="vendor/three.min.js"></script>
-<script src="garden-3d.js"></script>
+<script src="garden-3d.js?v=clear-light"></script>
 <script>
 let canvas=document.querySelector('canvas'), garden, ctx;
 try {
@@ -23,10 +23,10 @@ try {
 const button=document.querySelector('button'), message=document.querySelector('#message'), score=document.querySelector('#score');
 let mode='ready', width, height, x, lift=0, velocity=0, cleared=0, distance=0, last=0;
 const stages=[
-  {name:'Prairie',items:'Hay bales',speed:235,sky:'#f7e3ae',land:'#bfa054'},
-  {name:'Forest',items:'Stumps',speed:255,sky:'#bdd7c4',land:'#567547'},
-  {name:'Cold',items:'Ice spikes',speed:275,sky:'#c6e8fa',land:'#dfedf6'},
-  {name:'Fire',items:'Lava rocks',speed:295,sky:'#eda383',land:'#594345'}
+  {name:'Prairie',items:'Hay bales',speed:235,sky:'#448fc4',land:'#bfa054'},
+  {name:'Forest',items:'Stumps',speed:255,sky:'#548e83',land:'#567547'},
+  {name:'Cold',items:'Ice spikes',speed:275,sky:'#5086b5',land:'#afcddc'},
+  {name:'Fire',items:'Lava rocks',speed:295,sky:'#ad5043',land:'#594345'}
 ];
 let level=0, frameId;
 function updateHUD(){
